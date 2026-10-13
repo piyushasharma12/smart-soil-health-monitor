@@ -1,0 +1,913 @@
+
+Author: Piyusha Sharma
+Project: Smart Soil Health Monitor
+
+  
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Soil Health Monitoring System</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 24px;
+            font-family: Arial, sans-serif;
+            background: #f3f6f4;
+            color: #23352b;
+        }
+
+        .container { max-width: 1200px; margin: auto; }
+
+        header {
+            background: #205c3b;
+            color: white;
+            padding: 24px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        header h1 { margin: 0 0 10px; }
+        header p { margin: 0; line-height: 1.5; }
+
+        .status, .card, .table-container, .info-panel {
+            background: white;
+            border-radius: 10px;
+            padding: 18px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px #0000000d;
+        }
+
+        .status { line-height: 1.9; }
+
+        .status-line {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status-pill {
+            display: inline-block;
+            background: #edf1ee;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        button {
+            background: #205c3b;
+            color: white;
+            border: 0;
+            padding: 10px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover { background: #17472d; }
+        button:disabled { opacity: 0.6; cursor: wait; }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .card { margin-bottom: 0; }
+
+        .card h3 {
+            margin: 0;
+            font-size: 15px;
+            color: #587062;
+        }
+
+        .value {
+            font-size: 28px;
+            font-weight: bold;
+            margin: 14px 0 8px;
+            overflow-wrap: anywhere;
+        }
+
+        .unit { color: #687a70; font-size: 13px; }
+
+        h2 { margin-top: 30px; }
+
+        .table-container { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 850px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e6ece8;
+            font-size: 13px;
+        }
+
+        th { background: #eaf2ed; }
+
+        .note {
+            color: #64746b;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .info-panel { line-height: 1.7; }
+
+        .error { color: #b42318; }
+        .success { color: #16733b; }
+        .muted { color: #687a70; }
+
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            header { padding: 18px; }
+            header h1 { font-size: 24px; }
+            .value { font-size: 24px; }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+
+    <header>
+        <h1>Smart Soil Health Monitoring System</h1>
+        <p>IoT-Based Real-Time Soil Monitoring Dashboard</p>
+        <p>Project focus: agricultural soil monitoring in Punjab, India</p>
+    </header>
+
+    <section class="status">
+        <div class="status-line">
+            <strong>Backend connection:
+                <span id="connection" class="muted">Connecting...</span>
+            </strong>
+            <button id="refreshButton" onclick="loadReadings()">Refresh Now</button>
+        </div>
+
+        <p>Last dashboard refresh: <span id="refreshTime">Not yet updated</span></p>
+        <p>Latest reading timestamp: <span id="readingTime">Waiting for data</span></p>
+        <p>Total records returned by API: <strong id="totalReadings">0</strong></p>
+        <p>Data source: <span id="dataSource" class="status-pill">Not specified</span></p>
+    </section>
+
+    <h2>Latest Sensor Readings</h2>
+    <h2>Amritsar Weather Estimates</h2>
+
+<p class="note">
+    These values come from Open-Meteo and are estimates, not direct measurements from physical soil sensors.
+</p>
+
+<div class="status">
+    <button id="fetchWeatherButton" type="button" onclick="fetchWeather()">Fetch Latest Weather</button>
+    <p id="weatherMessage" class="muted">Loading saved weather estimates...</p>
+    <p>Latest weather timestamp: <span id="weatherTime">--</span></p>
+
+    <div class="cards">
+        <div class="card">
+            <h3>Air Temperature</h3>
+            <div class="value" id="weatherAirTemp">--</div>
+            <div class="unit">°C</div>
+        </div>
+
+        <div class="card">
+            <h3>Humidity</h3>
+            <div class="value" id="weatherHumidity">--</div>
+            <div class="unit">%</div>
+        </div>
+
+        <div class="card">
+            <h3>Soil Temperature</h3>
+            <div class="value" id="weatherSoilTemp">--</div>
+            <div class="unit">°C (estimated)</div>
+        </div>
+
+        <div class="card">
+            <h3>Soil Moisture</h3>
+            <div class="value" id="weatherSoilMoisture">--</div>
+            <div class="unit">Modelled value</div>
+        </div>
+    </div>
+</div>
+
+<h3>Recent Weather Estimates</h3>
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Location</th>
+                <th>Air Temp (°C)</th>
+                <th>Humidity (%)</th>
+                <th>Soil Temp (°C)</th>
+                <th>Soil Moisture</th>
+                <th>Source</th>
+            </tr>
+        </thead>
+        <tbody id="weatherTable">
+            <tr><td colspan="7">Loading...</td></tr>
+        </tbody>
+    </table>
+</div>
+
+
+<h2>Enter a Manual Test Reading</h2>
+
+<div class="info-panel">
+    <p class="note">
+        Enter test values manually. These records are for software testing
+        and are not actual field measurements.
+    </p>
+
+    <form id="manualForm">
+        <div class="cards">
+            <div class="card">
+                <label for="inputMoisture">Soil Moisture (raw ADC)</label>
+                <input id="inputMoisture" type="number" min="0" max="4095"
+                       step="1" value="1777" required>
+            </div>
+
+            <div class="card">
+                <label for="inputPh">Soil pH Sensor (raw ADC)</label>
+                <input id="inputPh" type="number" min="0" max="4095"
+                       step="1" value="2222" required>
+            </div>
+
+            <div class="card">
+                <label for="inputEc">Soil EC Sensor (raw ADC)</label>
+                <input id="inputEc" type="number" min="0" max="4095"
+                       step="1" value="1888" required>
+            </div>
+
+            <div class="card">
+                <label for="inputSoilTemp">Soil Temperature (°C)</label>
+                <input id="inputSoilTemp" type="number" min="-50" max="100"
+                       step="0.1" value="26.5" required>
+            </div>
+
+            <div class="card">
+                <label for="inputAirTemp">Air Temperature (°C)</label>
+                <input id="inputAirTemp" type="number" min="-50" max="100"
+                       step="0.1" value="29" required>
+            </div>
+
+            <div class="card">
+                <label for="inputHumidity">Air Humidity (%)</label>
+                <input id="inputHumidity" type="number" min="0" max="100"
+                       step="0.1" value="61" required>
+            </div>
+        </div>
+
+        <br>
+        <button type="submit" id="addReadingButton">Add Reading</button>
+        <p id="formMessage" role="status"></p>
+    </form>
+</div>
+
+<style>
+    #manualForm label {
+        display: block;
+        font-size: 14px;
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+
+    #manualForm input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #cbd7ce;
+        border-radius: 6px;
+        font-size: 16px;
+    }
+
+    #manualForm .card {
+        min-width: 0;
+    }
+</style>
+
+<script>
+    document.getElementById("manualForm").addEventListener("submit", async function(event) {
+        event.preventDefault();
+
+        const button = document.getElementById("addReadingButton");
+        const message = document.getElementById("formMessage");
+
+        const reading = {
+            moisture_raw: Number(document.getElementById("inputMoisture").value),
+            ph_raw: Number(document.getElementById("inputPh").value),
+            ec_raw: Number(document.getElementById("inputEc").value),
+            soil_temperature: Number(document.getElementById("inputSoilTemp").value),
+            air_temperature: Number(document.getElementById("inputAirTemp").value),
+            humidity: Number(document.getElementById("inputHumidity").value)
+        };
+
+        button.disabled = true;
+        message.textContent = "Saving reading...";
+        message.className = "muted";
+
+        try {
+            const response = await fetch("/manual-reading", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(reading)
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "Unable to save reading");
+            }
+
+            message.textContent =
+                "Reading #" + result.reading_id + " saved successfully.";
+
+            message.className = "success";
+
+            await loadReadings();
+        } catch (error) {
+            message.textContent = "Error: " + error.message;
+            message.className = "error";
+        } finally {
+            button.disabled = false;
+        }
+    });
+</script>
+
+    <div class="cards">
+        <div class="card">
+            <h3>Soil Moisture</h3>
+            <div class="value" id="moisture">--</div>
+            <div class="unit">Raw ADC value (0–4095)</div>
+        </div>
+
+        <div class="card">
+            <h3>Soil pH Sensor</h3>
+            <div class="value" id="ph">--</div>
+            <div class="unit">Raw ADC value, not calibrated pH</div>
+        </div>
+
+        <div class="card">
+            <h3>Soil EC Sensor</h3>
+            <div class="value" id="ec">--</div>
+            <div class="unit">Raw ADC value, not calibrated EC</div>
+        </div>
+
+        <div class="card">
+            <h3>Soil Temperature</h3>
+            <div class="value" id="soilTemp">--</div>
+            <div class="unit">°C</div>
+        </div>
+
+        <div class="card">
+            <h3>Air Temperature</h3>
+            <div class="value" id="airTemp">--</div>
+            <div class="unit">°C</div>
+        </div>
+
+        <div class="card">
+            <h3>Air Humidity</h3>
+            <div class="value" id="humidity">--</div>
+            <div class="unit">%</div>
+        </div>
+    </div>
+
+    <h2>Recent Sensor Readings</h2>
+
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Timestamp</th>
+                    <th>Moisture Raw</th>
+                    <th>pH Raw</th>
+                    <th>EC Raw</th>
+                    <th>Soil Temp (°C)</th>
+                    <th>Air Temp (°C)</th>
+                    <th>Humidity (%)</th>
+                </tr>
+            </thead>
+            <tbody id="readingsTable">
+                <tr><td colspan="8">Waiting for readings...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="info-panel">
+        <strong>About this dashboard</strong>
+        <p class="note">
+            The dashboard retrieves saved records from the Flask API and refreshes
+            every five seconds. Raw ADC values are not calibrated physical
+            measurements. Test records must not be treated as actual field data.
+            Real soil measurements require working sensors, calibration, and
+            collection from identified agricultural locations.
+        </p>
+    </div>
+
+</div>
+
+<script>
+    function showValue(value, digits = 2) {
+        if (value === null || value === undefined || value === "") {
+            return "--";
+        }
+
+        const number = Number(value);
+
+        if (!Number.isFinite(number)) {
+            return "--";
+        }
+
+        return Number.isInteger(number)
+            ? String(number)
+            : number.toFixed(digits);
+    }
+
+    function showTimestamp(value) {
+        if (!value) return "--";
+
+        const date = new Date(value);
+
+        if (Number.isNaN(date.getTime())) {
+            return String(value);
+        }
+
+        return date.toLocaleString();
+    }
+
+    function showCell(value) {
+        return value === null || value === undefined || value === ""
+            ? "--"
+            : String(value);
+    }
+
+    async function loadReadings() {
+        const connection = document.getElementById("connection");
+        const button = document.getElementById("refreshButton");
+        const table = document.getElementById("readingsTable");
+
+        button.disabled = true;
+        connection.textContent = "Connecting...";
+        connection.className = "muted";
+
+        try {
+            const response = await fetch("/api/readings", {
+                cache: "no-store"
+            });
+
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+
+            const readings = await response.json();
+
+            if (!Array.isArray(readings)) {
+                throw new Error("Unexpected API response");
+            }
+
+            connection.textContent = "Connected";
+            connection.className = "success";
+
+            document.getElementById("refreshTime").textContent =
+                new Date().toLocaleString();
+
+            document.getElementById("totalReadings").textContent =
+                readings.length;
+
+            if (readings.length === 0) {
+                table.innerHTML =
+                    '<tr><td colspan="8">No readings saved yet.</td></tr>';
+
+                document.getElementById("readingTime").textContent =
+                    "No data available";
+
+                ["moisture", "ph", "ec", "soilTemp", "airTemp", "humidity"]
+                    .forEach(id => {
+                        document.getElementById(id).textContent = "--";
+                    });
+
+                document.getElementById("dataSource").textContent =
+                    "No records";
+                return;
+            }
+
+            const latest = readings[0];
+
+            document.getElementById("moisture").textContent =
+                showValue(latest.moisture_raw);
+
+            document.getElementById("ph").textContent =
+                showValue(latest.ph_raw);
+
+            document.getElementById("ec").textContent =
+                showValue(latest.ec_raw);
+
+            document.getElementById("soilTemp").textContent =
+                showValue(latest.soil_temperature);
+
+            document.getElementById("airTemp").textContent =
+                showValue(latest.air_temperature);
+
+            document.getElementById("humidity").textContent =
+                showValue(latest.humidity);
+
+            document.getElementById("readingTime").textContent =
+                showTimestamp(latest.timestamp);
+
+            // Do not assume readings are real or simulated without a
+            // source field supplied by the backend.
+            document.getElementById("dataSource").textContent =
+                latest.source || "Source not recorded";
+
+            table.innerHTML = "";
+
+            readings.slice(0, 20).forEach(reading => {
+                const row = document.createElement("tr");
+
+                const values = [
+                    showCell(reading.id),
+                    showTimestamp(reading.timestamp),
+                    showValue(reading.moisture_raw),
+                    showValue(reading.ph_raw),
+                    showValue(reading.ec_raw),
+                    showValue(reading.soil_temperature),
+                    showValue(reading.air_temperature),
+                    showValue(reading.humidity)
+                ];
+
+                values.forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+
+                table.appendChild(row);
+            });
+
+        } catch (error) {
+            connection.textContent = "Connection error: " + error.message;
+            connection.className = "error";
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    loadReadings();
+    setInterval(loadReadings, 5000);
+</script>
+```html
+<script>
+    const WEATHER_API_KEY = "soil-demo-change-this-to-a-long-random-secret";
+
+    async function loadWeatherReadings() {
+        const message = document.getElementById("weatherMessage");
+        const table = document.getElementById("weatherTable");
+
+        try {
+            const response = await fetch("/api/weather-readings", {
+                cache: "no-store"
+            });
+
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+
+            const readings = await response.json();
+
+            if (!Array.isArray(readings)) {
+                throw new Error("Unexpected API response");
+            }
+
+            if (readings.length === 0) {
+                message.textContent = "No weather estimates saved yet.";
+                table.innerHTML =
+                    '<tr><td colspan="7">No weather records available.</td></tr>';
+                return;
+            }
+
+            const latest = readings[0];
+
+            document.getElementById("weatherAirTemp").textContent =
+                showValue(latest.air_temperature) + " °C";
+
+            document.getElementById("weatherHumidity").textContent =
+                showValue(latest.humidity) + " %";
+
+            document.getElementById("weatherSoilTemp").textContent =
+                showValue(latest.soil_temperature) + " °C";
+
+            document.getElementById("weatherSoilMoisture").textContent =
+                showValue(latest.soil_moisture, 3);
+
+            document.getElementById("weatherTime").textContent =
+                showTimestamp(latest.timestamp);
+
+            message.textContent =
+                "Location: " + (latest.location || "Amritsar, Punjab") +
+                " | Source: " + (latest.source || "Open-Meteo estimate");
+
+            table.innerHTML = "";
+
+            readings.slice(0, 20).forEach(reading => {
+                const row = document.createElement("tr");
+
+                [
+                    showTimestamp(reading.timestamp),
+                    reading.location || "Amritsar, Punjab",
+                    showValue(reading.air_temperature),
+                    showValue(reading.humidity),
+                    showValue(reading.soil_temperature),
+                    showValue(reading.soil_moisture, 3),
+                    reading.source || "Open-Meteo estimate"
+                ].forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+
+                table.appendChild(row);
+            });
+
+        } catch (error) {
+            message.textContent = "Weather loading error: " + error.message;
+            message.className = "error";
+        }
+    }
+
+    async function fetchWeather() {
+        const button = document.getElementById("fetchWeatherButton");
+        const message = document.getElementById("weatherMessage");
+
+        button.disabled = true;
+        message.textContent = "Fetching weather estimates...";
+        message.className = "muted";
+
+        try {
+            const response = await fetch("/api/fetch-weather", {
+                method: "POST",
+                headers: {
+                    "X-API-Key": WEATHER_API_KEY
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "Request failed");
+            }
+
+            message.textContent = "Weather estimate fetched successfully.";
+            await loadWeatherReadings();
+
+        } catch (error) {
+            message.textContent = "Weather fetch failed: " + error.message;
+            message.className = "error";
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    loadWeatherReadings();
+    setInterval(loadWeatherReadings, 15000);
+</script>
+```html
+<script>
+    const WEATHER_API_KEY = "soil-demo-change-this-to-a-long-random-secret";
+
+    async function loadWeatherReadings() {
+        const message = document.getElementById("weatherMessage");
+        const table = document.getElementById("weatherTable");
+
+        try {
+            const response = await fetch("/api/weather-readings", {
+                cache: "no-store"
+            });
+
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+
+            const readings = await response.json();
+
+            if (!Array.isArray(readings)) {
+                throw new Error("Unexpected API response");
+            }
+
+            if (readings.length === 0) {
+                message.textContent = "No weather estimates saved yet.";
+                table.innerHTML =
+                    '<tr><td colspan="7">No weather records available.</td></tr>';
+                return;
+            }
+
+            const latest = readings[0];
+
+            document.getElementById("weatherAirTemp").textContent =
+                showValue(latest.air_temperature) + " °C";
+
+            document.getElementById("weatherHumidity").textContent =
+                showValue(latest.humidity) + " %";
+
+            document.getElementById("weatherSoilTemp").textContent =
+                showValue(latest.soil_temperature) + " °C";
+
+            document.getElementById("weatherSoilMoisture").textContent =
+                showValue(latest.soil_moisture, 3);
+
+            document.getElementById("weatherTime").textContent =
+                showTimestamp(latest.timestamp);
+
+            message.textContent =
+                "Location: " + (latest.location || "Amritsar, Punjab") +
+                " | Source: " + (latest.source || "Open-Meteo estimate");
+
+            table.innerHTML = "";
+
+            readings.slice(0, 20).forEach(reading => {
+                const row = document.createElement("tr");
+
+                [
+                    showTimestamp(reading.timestamp),
+                    reading.location || "Amritsar, Punjab",
+                    showValue(reading.air_temperature),
+                    showValue(reading.humidity),
+                    showValue(reading.soil_temperature),
+                    showValue(reading.soil_moisture, 3),
+                    reading.source || "Open-Meteo estimate"
+                ].forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+
+                table.appendChild(row);
+            });
+
+        } catch (error) {
+            message.textContent = "Weather loading error: " + error.message;
+            message.className = "error";
+        }
+    }
+
+    async function fetchWeather() {
+        const button = document.getElementById("fetchWeatherButton");
+        const message = document.getElementById("weatherMessage");
+
+        button.disabled = true;
+        message.textContent = "Fetching weather estimates...";
+        message.className = "muted";
+
+        try {
+            const response = await fetch("/api/fetch-weather", {
+                method: "POST",
+                headers: {
+                    "X-API-Key": WEATHER_API_KEY
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "Request failed");
+            }
+
+            message.textContent = "Weather estimate fetched successfully.";
+            await loadWeatherReadings();
+
+        } catch (error) {
+            message.textContent = "Weather fetch failed: " + error.message;
+            message.className = "error";
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    loadWeatherReadings();
+    setInterval(loadWeatherReadings, 15000);
+</script>
+<script>
+    const WEATHER_API_KEY = "soil-demo-change-this-to-a-long-random-secret";
+
+    async function loadWeatherReadings() {
+        const message = document.getElementById("weatherMessage");
+        const table = document.getElementById("weatherTable");
+
+        try {
+            const response = await fetch("/api/weather-readings", {
+                cache: "no-store"
+            });
+
+            if (!response.ok) {
+                throw new Error("HTTP " + response.status);
+            }
+
+            const readings = await response.json();
+
+            if (!Array.isArray(readings)) {
+                throw new Error("Unexpected API response");
+            }
+
+            if (readings.length === 0) {
+                message.textContent = "No weather estimates saved yet.";
+                table.innerHTML =
+                    '<tr><td colspan="7">No weather records available.</td></tr>';
+                return;
+            }
+
+            const latest = readings[0];
+
+            document.getElementById("weatherAirTemp").textContent =
+                showValue(latest.air_temperature) + " °C";
+
+            document.getElementById("weatherHumidity").textContent =
+                showValue(latest.humidity) + " %";
+
+            document.getElementById("weatherSoilTemp").textContent =
+                showValue(latest.soil_temperature) + " °C";
+
+            document.getElementById("weatherSoilMoisture").textContent =
+                showValue(latest.soil_moisture, 3);
+
+            document.getElementById("weatherTime").textContent =
+                showTimestamp(latest.timestamp);
+
+            message.textContent =
+                "Location: " + (latest.location || "Amritsar, Punjab") +
+                " | Source: " + (latest.source || "Open-Meteo estimate");
+
+            table.innerHTML = "";
+
+            readings.slice(0, 20).forEach(reading => {
+                const row = document.createElement("tr");
+
+                [
+                    showTimestamp(reading.timestamp),
+                    reading.location || "Amritsar, Punjab",
+                    showValue(reading.air_temperature),
+                    showValue(reading.humidity),
+                    showValue(reading.soil_temperature),
+                    showValue(reading.soil_moisture, 3),
+                    reading.source || "Open-Meteo estimate"
+                ].forEach(value => {
+                    const cell = document.createElement("td");
+                    cell.textContent = value;
+                    row.appendChild(cell);
+                });
+
+                table.appendChild(row);
+            });
+
+        } catch (error) {
+            message.textContent = "Weather loading error: " + error.message;
+            message.className = "error";
+        }
+    }
+
+    async function fetchWeather() {
+        const button = document.getElementById("fetchWeatherButton");
+        const message = document.getElementById("weatherMessage");
+
+        button.disabled = true;
+        message.textContent = "Fetching weather estimates...";
+        message.className = "muted";
+
+        try {
+            const response = await fetch("/api/fetch-weather", {
+                method: "POST",
+                headers: {
+                    "X-API-Key": WEATHER_API_KEY
+                }
+            });
+
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || "Request failed");
+            }
+
+            message.textContent = "Weather estimate fetched successfully.";
+            await loadWeatherReadings();
+
+        } catch (error) {
+            message.textContent = "Weather fetch failed: " + error.message;
+            message.className = "error";
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    loadWeatherReadings();
+    setInterval(loadWeatherReadings, 15000);
+</script>
+</body>
+</html>
